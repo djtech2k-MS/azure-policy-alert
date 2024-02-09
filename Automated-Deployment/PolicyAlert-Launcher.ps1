@@ -22,12 +22,16 @@ param(
     [string]$dcrName = "DCR-",
     [string]$dceName = "DCE-",
     [string]$customTableName = "PolicyAlert",
+    [string]$alertRuleName = "AR-",
+    [string]$actionGroupName = "AG-",
+    [string]$actionGroupEmail = "joe@contoso.com",
     [string]$functionBicep = ".\function-app\main.bicep",
     [string]$eventGridBicep = ".\event-grid\main.bicep",
     [string]$dcrBicep = ".\data-collection-rule\main.bicep",
+    [string]$alertBicep = ".\alert-rules\main.bicep",
     [string]$reminders = ".\reminders.txt",
     [string]$OutputFile = ".\PolicyAlert-Launcher-Log.log",
-    [string]$ScriptVer = "v1.0.3"
+    [string]$ScriptVer = "v1.0.4"
 )
 
 Function Log {
@@ -98,9 +102,13 @@ Log "topicName = $topicName"
 Log "dcrName = $dcrName"
 Log "dceName = $dceName"
 Log "customTableName = $customTableName"
+Log "alertRuleName = $alertRuleName"
+Log "actionGroupName = $actionGroupName"
+Log "actionGroupEmail = $actionGroupEmail"
 Log "functionBicep = $functionBicep"
 Log "eventGridBicep = $eventGridBicep"
 Log "dcrBicep = $dcrBicep"
+Log "alertBicep = $alertBicep"
 Log "reminders = $reminders"
 Log "OutputFile = $OutputFile"
 Log "ScriptVer = $ScriptVer"
@@ -169,8 +177,6 @@ $FunctionDeployParams = @{
     appServicePlanName = $appServicePlanName
     appInsightsName = $appInsightsName
     storageAccountName = $storageAccountName
-    keyVaultName = $keyVaultName
-    keyVaultSku = $keyVaultSku
     storageSku = $storageSku
     appServicePlanSku = $appServicePlanSku
     lawName = $lawName
@@ -247,6 +253,31 @@ Try {
     Read-Host "Press Any Key to Exit Script"
     Exit
 }
+
+# Call Alert Rule Bicep Template
+# Setup Hashtable for Alert Rule Bicep Params
+$alertDeployParams = @{
+    alertRuleName = $alertRuleName
+    actionGroupName = $actionGroupName
+    actionGroupEmail = $actionGroupEmail
+    customTableName = $customTableName
+    lawName = $lawName
+}
+
+# Run Alert Rule Bicep Template
+Try {
+    Log "Calling Alert Rule Bicep Template"
+    New-AzResourceGroupDeployment -ResourceGroupName $RGName -TemplateFile $alertBicep -TemplateParameterObject $alertDeployParams
+    Log "Alert Rule and Action Group Created" "Green"
+} Catch {
+    ErrorHandler $Error
+    Log "Error Caught Launching Alert Rule Bicep Deployment" "Red"
+    Log "Variables :: $RGNAME :: $alertBicep :: $alertDeployParams"
+    Log "Exiting Script" "Red"
+    Read-Host "Press Any Key to Exit Script"
+    Exit
+}
+
 
 Log "Generating Output Reminders"
 
